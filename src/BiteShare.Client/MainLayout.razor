@@ -1,0 +1,17 @@
+@inherits LayoutComponentBase
+@inject AuthTokenStore Tokens
+
+<div class="page">
+    <main>
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await Tokens.LoadFromStorageAsync();
+    }
+}

@@ -1,0 +1,77 @@
+# Team roster (GitHub handles below are first-name shorthand, consistent with
+# how this file has always referred to people):
+#   @Emmanuel  - Emmanuel Grant Boamah
+#   @Precious  - Precious Ayomah        (Project Lead)
+#   @Joseph    - Joseph Gyimah
+#   @Aaron     - Aaron Tetteh
+#   @Roselyn   - Roselyn Sakyi
+#   @Horoya    - Horoya Razak
+#   @Olivia    - Olivia Kwateng
+#   @Obadiah   - Obadiah Donkor
+#   @Priscilla - Priscilla Akuokor
+#   @Stephanie - Stephanie Apenteng
+#   @Somuah    - Somuah Kofi Anim
+# All 11 team members own at least one area below.
+
+# Default owners for anything not matched more specifically below.
+# Precious is Project Lead, so she's on every path by default; Stephanie
+# co-owns the default as process/docs owner.
+*                                                       @Precious @Stephanie
+
+# --- Phase 0 - foundations / project-wide ---
+/.github/                                              @Priscilla @Precious
+/.github/workflows/                                    @Priscilla
+/CONTRIBUTING.md                                       @Stephanie
+/README.md                                             @Stephanie
+/docs/                                                  @Stephanie
+/BiteShare.sln                                         @Somuah
+/Directory.Build.props                                 @Somuah
+/src/BiteShare.Api/Program.cs                          @Somuah
+/src/BiteShare.Client/Program.cs                       @Joseph
+/src/BiteShare.Api/appsettings.json                    @Emmanuel
+/src/BiteShare.Api/appsettings.Development.json        @Emmanuel
+/src/BiteShare.Client/wwwroot/appsettings.json         @Emmanuel
+
+# --- Data & Auth layer ---
+/src/BiteShare.Data/                                    @Roselyn
+/src/BiteShare.Api/Controllers/AuthController.cs       @Horoya
+/src/BiteShare.Api/Services/JwtTokenService.cs         @Horoya
+/src/BiteShare.Api/Services/IJwtTokenService.cs        @Horoya
+/src/BiteShare.Api/Services/CurrentParticipant.cs      @Horoya
+/src/BiteShare.Api/Services/IJoinCodeGenerator.cs      @Emmanuel
+/src/BiteShare.Api/Controllers/ParticipantsController.cs @Emmanuel
+
+# --- Stream A - Collaborative Cart (real-time) ---
+/src/BiteShare.Api/Hubs/OrderHub.cs                    @Aaron
+/src/BiteShare.Api/Controllers/CartController.cs       @Aaron
+/src/BiteShare.Client/Services/OrderHubService.cs      @Aaron
+/src/BiteShare.Client/Pages/                            @Precious @Joseph
+/src/BiteShare.Client/wwwroot/                          @Precious
+/src/BiteShare.Client/Services/ApiClient.cs            @Joseph
+/src/BiteShare.Client/Services/AuthHandlers.cs         @Joseph
+/src/BiteShare.Client/Services/AuthTokenStore.cs       @Joseph
+
+# --- Stream B - Cost Splitter & Receipts ---
+/src/BiteShare.Api/Controllers/ReceiptsController.cs   @Roselyn
+/src/BiteShare.Api/Services/SplitterService.cs         @Roselyn
+/src/BiteShare.Api/Services/ISplitterService.cs        @Roselyn
+/src/BiteShare.Api/Services/ReceiptPdfService.cs       @Roselyn
+/src/BiteShare.Api/Services/IReceiptPdfService.cs      @Roselyn
+
+# --- Stream C - Order Status & Payments ---
+/src/BiteShare.Api/Controllers/OrdersController.cs     @Olivia @Horoya
+/src/BiteShare.Api/Services/StripePaymentService.cs    @Olivia
+/src/BiteShare.Api/Services/IStripePaymentService.cs   @Olivia
+
+# --- Sessions & catalog ---
+/src/BiteShare.Api/Controllers/SessionsController.cs   @Obadiah
+/src/BiteShare.Api/Controllers/MenuItemsController.cs  @Obadiah
+
+# --- Shared contracts - anyone touching these should expect broad review ---
+/src/BiteShare.Shared/                                  @Aaron @Olivia @Roselyn @Horoya
+
+# --- Tests ---
+/tests/                                                 @Obadiah
+
+# --- Deployment ---
+/.github/workflows/azure-deploy.yml                    @Priscilla
