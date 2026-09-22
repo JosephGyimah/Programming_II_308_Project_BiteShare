@@ -2,125 +2,83 @@ namespace BiteShare.Api.Services;
 
 public class SplitterService : ISplitterService
 {
-    public IReadOnlyList<ParticipantShare> Split(
-        IReadOnlyList<ParticipantCartTotal> participants,
+    public IReadOnlyList<SplitResult> Split(
+        IReadOnlyList<ParticipantCartTotal> participantTotals,
         decimal tax,
         decimal tip,
         decimal deliveryFee,
-        SplitModeOption mode)
+        SplitModeOption splitMode)
     {
+        // Zero orders: nothing to split, don't throw.
+        var participants = participantTotals.Where(p => p.Subtotal > 0m).ToList();
         if (participants.Count == 0)
-        {
-            return Array.Empty<ParticipantShare>();
-        }
+            return Array.Empty<SplitResult>();
 
-        return mode switch
+        var subtotal = participants.Sum(p => p.Subtotal);
+        var grandTotal = subtotal + tax + tip + deliveryFee;
+
+        return splitMode switch
         {
-            SplitModeOption.Equal => SplitEqual(participants, tax, tip, deliveryFee),
-            SplitModeOption.PerItem => SplitPerItem(participants, tax, tip, deliveryFee),
-            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+            SplitModeOption.Equal => SplitEqual(participants, grandTotal),
+            SplitModeOption.PerItem => SplitPerItem(participants, subtotal, grandTotal),
+            _ => throw new ArgumentOutOfRangeException(nameof(splitMode))
         };
     }
 
-    private static IReadOnlyList<ParticipantShare> SplitEqual(
-        IReadOnlyList<ParticipantCartTotal> participants,
-        decimal tax,
-        decimal tip,
-        decimal deliveryFee)
+    private static List<SplitResult> SplitEqual(List<ParticipantCartTotal> participants, decimal grandTotal)
     {
-        // Only participants who actually ordered something (subtotal > 0) share the bill;
-        // someone who joined but never ordered owes nothing and isn't included.
-        var eligible = participants.Where(p => p.Subtotal > 0m).ToList();
-        if (eligible.Count == 0)
+        var ordered = participants.OrderBy(p => p.ParticipantId).ToList();
+        var n = ordered.Count;
+
+        // Work in whole cents to avoid floating remainder drift, then allocate the
+        // leftover cents one at a time (deterministic order) so the sum always
+        // equals the grand total exactly.
+        var totalCents = decimal.Round(grandTotal * 100m, 0, MidpointRounding.AwayFromZero);
+        var baseCents = (long)totalCents / n;
+        var remainderCents = (long)totalCents % n;
+
+        var results = new List<SplitResult>(n);
+        for (var i = 0; i < n; i++)
         {
-            return Array.Empty<ParticipantShare>();
+            var cents = baseCents + (i < remainderCents ? 1 : 0);
+            results.Add(new SplitResult(ordered[i].ParticipantId, cents / 100m));
         }
-
-        var total = participants.Sum(p => p.Subtotal) + tax + tip + deliveryFee;
-        var shares = AllocateCents(ToCents(total), eligible.Count);
-
-        var result = new List<ParticipantShare>(eligible.Count);
-        for (var i = 0; i < eligible.Count; i++)
-        {
-            result.Add(new ParticipantShare(eligible[i].ParticipantId, FromCents(shares[i])));
-        }
-
-        return result;
+        return results;
     }
 
-    private static IReadOnlyList<ParticipantShare> SplitPerItem(
-        IReadOnlyList<ParticipantCartTotal> participants,
-        decimal tax,
-        decimal tip,
-        decimal deliveryFee)
+    private static List<SplitResult> SplitPerItem(List<ParticipantCartTotal> participants, decimal subtotal, decimal grandTotal)
     {
-        var extra = tax + tip + deliveryFee;
-        var subtotalTotal = participants.Sum(p => p.Subtotal);
-        var extraCents = ToCents(extra);
+        var ordered = participants.OrderBy(p => p.ParticipantId).ToList();
 
-        long[] extraShareCents;
-        if (subtotalTotal <= 0m || extraCents == 0)
-        {
-            extraShareCents = new long[participants.Count];
-        }
-        else
-        {
-            var rawShares = participants
-                .Select(p => extraCents * (double)(p.Subtotal / subtotalTotal))
-                .ToArray();
-            extraShareCents = AllocateWeighted(extraCents, rawShares);
-        }
+        // Each participant's share of tax/tip/delivery is proportional to their share
+        // of the subtotal. Compute in cents, then patch the rounding remainder onto
+        // the last participant (by ParticipantId order) so the totals reconcile exactly.
+        var totalCents = decimal.Round(grandTotal * 100m, 0, MidpointRounding.AwayFromZero);
 
-        var result = new List<ParticipantShare>(participants.Count);
-        for (var i = 0; i < participants.Count; i++)
-        {
-            var amount = participants[i].Subtotal + FromCents(extraShareCents[i]);
-            result.Add(new ParticipantShare(participants[i].ParticipantId, amount));
-        }
+        var raw = ordered
+            .Select(p => (p.ParticipantId, Cents: subtotal == 0m ? 0m : (p.Subtotal / subtotal) * totalCents))
+            .ToList();
 
-        return result;
+        var floored = raw.Select(r => ((long)Math.Floor(r.Cents))).ToList();
+        var allocated = floored.Sum();
+        var remainder = (long)totalCents - allocated;
+
+        // Give the leftover cents to the participants with the largest fractional
+        // remainder first (largest-remainder method) — the standard way to make
+        // proportional rounding add back up to the total.
+        var fractionalOrder = raw
+            .Select((r, i) => (Index: i, Fraction: r.Cents - floored[i]))
+            .OrderByDescending(x => x.Fraction)
+            .ThenBy(x => ordered[x.Index].ParticipantId)
+            .ToList();
+
+        var cents = floored.ToArray();
+        for (var i = 0; i < remainder && i < fractionalOrder.Count; i++)
+            cents[fractionalOrder[i].Index] += 1;
+
+        var results = new List<SplitResult>(ordered.Count);
+        for (var i = 0; i < ordered.Count; i++)
+            results.Add(new SplitResult(ordered[i].ParticipantId, cents[i] / 100m));
+        return results;
     }
-
-    /// <summary>
-    /// Splits <paramref name="totalCents"/> into <paramref name="count"/> shares as evenly as
-    /// possible; any leftover cents go to the first participants in order, so the same input
-    /// always produces the same split and nothing is lost to rounding.
-    /// </summary>
-    private static long[] AllocateCents(long totalCents, int count)
-    {
-        var baseShare = totalCents / count;
-        var remainder = totalCents - baseShare * count;
-
-        var shares = new long[count];
-        for (var i = 0; i < count; i++)
-        {
-            shares[i] = baseShare + (i < remainder ? 1 : 0);
-        }
-
-        return shares;
-    }
-
-    /// <summary>Largest-remainder allocation of <paramref name="totalCents"/> across weighted raw shares.</summary>
-    private static long[] AllocateWeighted(long totalCents, double[] rawShares)
-    {
-        var floors = rawShares.Select(r => (long)Math.Floor(r)).ToArray();
-        var remainder = totalCents - floors.Sum();
-
-        var order = Enumerable.Range(0, rawShares.Length)
-            .OrderByDescending(i => rawShares[i] - floors[i])
-            .ToArray();
-
-        var shares = (long[])floors.Clone();
-        for (var i = 0; i < remainder && i < order.Length; i++)
-        {
-            shares[order[i]]++;
-        }
-
-        return shares;
-    }
-
-    private static long ToCents(decimal amount) =>
-        (long)decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero);
-
-    private static decimal FromCents(long cents) => cents / 100m;
 }

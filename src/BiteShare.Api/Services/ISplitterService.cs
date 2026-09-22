@@ -1,27 +1,28 @@
 namespace BiteShare.Api.Services;
 
-public enum SplitModeOption
-{
-    Equal,
-    PerItem
-}
-
 public record ParticipantCartTotal(Guid ParticipantId, decimal Subtotal);
-
-public record ParticipantShare(Guid ParticipantId, decimal AmountOwed);
+public record SplitResult(Guid ParticipantId, decimal AmountOwed);
 
 public interface ISplitterService
 {
     /// <summary>
-    /// Splits an order's grand total across participants.
-    /// Equal divides everything evenly among participants who actually ordered
-    /// something; PerItem charges each participant their own subtotal plus a
-    /// proportional share of tax/tip/delivery fee.
+    /// Splits an order total across participants under either split mode.
+    /// - Equal: subtotal + tax + tip + deliveryFee divided evenly across everyone with items in the cart.
+    /// - PerItem: each participant pays their own item subtotal plus a proportional share
+    ///   of tax/tip/deliveryFee based on their fraction of the overall subtotal.
+    /// Rounding remainders (from splitting cents) are allocated one cent at a time, in
+    /// ParticipantId order, so totals always reconcile exactly to the order total.
     /// </summary>
-    IReadOnlyList<ParticipantShare> Split(
-        IReadOnlyList<ParticipantCartTotal> participants,
+    IReadOnlyList<SplitResult> Split(
+        IReadOnlyList<ParticipantCartTotal> participantTotals,
         decimal tax,
         decimal tip,
         decimal deliveryFee,
-        SplitModeOption mode);
+        SplitModeOption splitMode);
+}
+
+public enum SplitModeOption
+{
+    Equal,
+    PerItem
 }
