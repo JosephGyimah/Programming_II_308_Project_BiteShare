@@ -3,6 +3,7 @@ using BiteShare.Api.Hubs;
 using BiteShare.Api.Services;
 using BiteShare.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -131,7 +132,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = new FileExtensionContentTypeProvider
+    {
+        Mappings =
+        {
+            [".dat"] = "application/octet-stream"
+        }
+    }
+});
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/order");
