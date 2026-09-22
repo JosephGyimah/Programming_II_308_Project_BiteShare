@@ -44,6 +44,14 @@ jobs:
       - name: Publish API
         run: dotnet publish src/BiteShare.Api -c Release -o ./publish
 
+      - name: Publish Client
+        run: dotnet publish src/BiteShare.Client -c Release -o ./client-publish
+        
+      - name: Copy Client to API wwwroot
+        run: |
+          mkdir -p ./publish/wwwroot
+          cp -r ./client-publish/wwwroot/. ./publish/wwwroot/
+
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:

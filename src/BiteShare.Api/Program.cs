@@ -130,8 +130,12 @@ app.UseCors("ClientPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/order");
+app.MapFallbackToFile("index.html");
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
