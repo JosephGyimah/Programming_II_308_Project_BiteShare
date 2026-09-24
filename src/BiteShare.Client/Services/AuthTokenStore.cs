@@ -21,6 +21,7 @@ public class AuthTokenStore
     public Guid? SessionId { get; private set; }
     public Guid? ParticipantId { get; private set; }
     public bool IsHost { get; private set; }
+    public bool IsLoggedIn => IdentityToken is not null;
 
     public event Action? OnChange;
 
@@ -75,6 +76,15 @@ public class AuthTokenStore
         await RemoveAsync("biteshare_participant_id");
         await RemoveAsync("biteshare_is_host");
         OnChange?.Invoke();
+    }
+
+    public async Task LogoutAsync()
+    {
+        IdentityToken = null;
+        IdentityDisplayName = null;
+        await RemoveAsync("biteshare_identity_token");
+        await RemoveAsync("biteshare_identity_name");
+        await ClearParticipantAsync();
     }
 
     private async Task<string?> GetAsync(string key)

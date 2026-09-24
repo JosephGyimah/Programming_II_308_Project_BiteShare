@@ -500,3 +500,17 @@ button.bite-icon-btn {
     font-size: 1.2rem; color: var(--bite-charcoal);
     padding: 0; margin-bottom: .5rem;
 }
+
+/* Top navigation strip */
+.bite-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .75rem 1.25rem;
+    font-size: .82rem;
+    font-weight: 600;
+    background: var(--bite-charcoal);
+}
+
+.bite-nav a { color: var(--bite-yellow); text-decoration: none; }
+.bite-nav button.bite-link-btn { width: auto; margin-left: auto; padding: 0; color: var(--bite-yellow); }

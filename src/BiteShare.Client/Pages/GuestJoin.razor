@@ -1,0 +1,63 @@
+@page "/join"
+@inject ApiClient Api
+@inject AuthTokenStore Tokens
+@inject NavigationManager Nav
+
+<PageTitle>Join a session - BiteShare</PageTitle>
+
+<div class="bite-container">
+    <div class="bite-hero">
+        <div class="bite-brand">🍱 BiteShare</div>
+        <h1>Join a table</h1>
+        <p>Enter the code your host shared with you.</p>
+    </div>
+
+    <div class="bite-body">
+        <div class="bite-card">
+            <label class="bite-label">Join code</label>
+            <input placeholder="ABC123" @bind="_joinCode" />
+            <label class="bite-label">Your name</label>
+            <input placeholder="e.g. Ama" @bind="_displayName" />
+            <button class="primary" @onclick="Join" disabled="@_busy">Join session</button>
+        </div>
+
+        @if (_error is not null)
+        {
+            <p class="bite-error">@_error</p>
+        }
+
+        <button class="bite-link-btn" @onclick='() => Nav.NavigateTo("/")'>Back to home</button>
+    </div>
+</div>
+
+@code {
+    private string _joinCode = "";
+    private string _displayName = "";
+    private string? _error;
+    private bool _busy;
+
+    private async Task Join()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_joinCode) || string.IsNullOrWhiteSpace(_displayName))
+        {
+            _error = "Enter a join code and your name.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var resp = await Api.GuestJoinAsync(_joinCode.Trim().ToUpperInvariant(), _displayName.Trim());
+            if (resp is null)
+            {
+                _error = "Couldn't join. Check the code and try again.";
+                return;
+            }
+
+            await Tokens.SetParticipantAsync(resp.GuestToken, resp.SessionId, resp.ParticipantId, false);
+            Nav.NavigateTo($"/session/{resp.SessionId}");
+        }
+        finally { _busy = false; }
+    }
+}

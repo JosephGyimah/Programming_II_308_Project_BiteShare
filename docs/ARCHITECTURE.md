@@ -17,7 +17,7 @@ flowchart LR
         Identity["ASP.NET Core Identity"]
     end
 
-    DB[("Azure SQL\n(via BiteShare.Data / EF Core)")]
+    DB[("PostgreSQL\n(via BiteShare.Data / EF Core)")]
     Stripe[("Stripe API")]
 
     Pages --> ApiClient

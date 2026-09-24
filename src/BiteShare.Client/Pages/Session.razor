@@ -225,6 +225,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Tokens.LoadFromStorageAsync();
+
         if (Tokens.ParticipantToken is null || Tokens.SessionId != SessionId)
             return;
 

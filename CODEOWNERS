@@ -74,4 +74,6 @@
 /tests/                                                 @Obadiah
 
 # --- Deployment ---
-/.github/workflows/azure-deploy.yml                    @Priscilla
+/.github/workflows/ci.yml                              @Priscilla @Joseph
+/Dockerfile                                             @Priscilla @Joseph
+/render.yaml                                            @Priscilla @Joseph

@@ -1,4 +1,133 @@
 @page "/"
+@inject ApiClient Api
+@inject AuthTokenStore Tokens
+@inject NavigationManager Nav
 
-<h1>BiteShare</h1>
-<p>Frontend is scaffolded - pages land here as each stream builds them out.</p>
+<PageTitle>BiteShare</PageTitle>
+
+<div class="bite-container">
+    <div class="bite-hero">
+        <div class="bite-brand">🍱 BiteShare</div>
+        <h1>Order together, split fairly.</h1>
+        <p>Sign in to host a table, or join one with a code.</p>
+    </div>
+
+    <div class="bite-body">
+        @if (Tokens.IsLoggedIn)
+        {
+            <div class="bite-card">
+                <h3>Signed in as @Tokens.IdentityDisplayName</h3>
+                <button class="primary" @onclick='() => Nav.NavigateTo("/my-sessions")'>My Sessions</button>
+            </div>
+        }
+
+        <div class="bite-tabs">
+            <button class="@(_tab == "signin" ? "active" : "")" @onclick='() => _tab = "signin"'>Sign In</button>
+            <button class="@(_tab == "host" ? "active" : "")" @onclick='() => _tab = "host"'>Host a Session</button>
+        </div>
+
+        @if (_tab == "signin")
+        {
+            <div class="bite-card">
+                <label class="bite-label">Email</label>
+                <input type="email" placeholder="you@example.com" @bind="_email" />
+                <label class="bite-label">Password</label>
+                <input type="password" placeholder="Password" @bind="_password" />
+                <button class="primary" @onclick="SignIn" disabled="@_busy">Sign in</button>
+            </div>
+        }
+        else if (!Tokens.IsLoggedIn)
+        {
+            <div class="bite-card">
+                <p class="bite-empty">Sign in first to host a session.</p>
+            </div>
+        }
+        else
+        {
+            <div class="bite-card">
+                <label class="bite-label">Session name</label>
+                <input placeholder="e.g. Friday team lunch" @bind="_sessionName" />
+                <label class="bite-label">Order deadline (optional)</label>
+                <input type="datetime-local" @bind="_deadline" />
+                <button class="primary" @onclick="HostSession" disabled="@_busy">Create session</button>
+            </div>
+        }
+
+        @if (_error is not null)
+        {
+            <p class="bite-error">@_error</p>
+        }
+
+        @if (!Tokens.IsLoggedIn)
+        {
+            <button class="bite-link-btn" @onclick='() => Nav.NavigateTo("/signup")'>New here? Create an account</button>
+        }
+        <button class="bite-link-btn" @onclick='() => Nav.NavigateTo("/join")'>Have a join code? Join as guest</button>
+    </div>
+</div>
+
+@code {
+    private string _tab = "signin";
+    private string _email = "";
+    private string _password = "";
+    private string _sessionName = "";
+    private DateTime? _deadline;
+    private string? _error;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tokens.LoadFromStorageAsync();
+        if (Tokens.IsLoggedIn) _tab = "host";
+    }
+
+    private async Task SignIn()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrEmpty(_password))
+        {
+            _error = "Enter your email and password.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var resp = await Api.LoginAsync(_email.Trim(), _password);
+            if (resp is null)
+            {
+                _error = "Sign in failed. Check your email and password.";
+                return;
+            }
+
+            await Tokens.SetIdentityAsync(resp.Token, resp.DisplayName);
+            Nav.NavigateTo("/my-sessions");
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task HostSession()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_sessionName))
+        {
+            _error = "Give your session a name.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var result = await Api.CreateSessionAsync(_sessionName.Trim(), _deadline?.ToUniversalTime());
+            if (result is null)
+            {
+                _error = "Couldn't create the session. Try signing in again.";
+                return;
+            }
+
+            await Tokens.SetParticipantAsync(result.ParticipantToken, result.Session.Id, result.ParticipantId, true);
+            Nav.NavigateTo($"/session/{result.Session.Id}");
+        }
+        finally { _busy = false; }
+    }
+}

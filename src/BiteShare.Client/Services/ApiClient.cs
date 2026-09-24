@@ -25,10 +25,15 @@ public class ApiClient
 
     // --- Auth / account -------------------------------------------------
 
-    public async Task<AuthResponse?> RegisterAsync(string email, string password, string displayName)
+    /// <summary>Returns the auth response, or the API's error text (e.g. password rules) on failure.</summary>
+    public async Task<(AuthResponse? Auth, string? Error)> RegisterAsync(string email, string password, string displayName)
     {
         var resp = await _identityApi.PostAsJsonAsync("api/auth/register", new RegisterRequest(email, password, displayName));
-        return resp.IsSuccessStatusCode ? await resp.Content.ReadFromJsonAsync<AuthResponse>() : null;
+        if (resp.IsSuccessStatusCode)
+            return (await resp.Content.ReadFromJsonAsync<AuthResponse>(), null);
+
+        var body = (await resp.Content.ReadAsStringAsync()).Trim('"');
+        return (null, string.IsNullOrWhiteSpace(body) ? "Couldn't create the account." : body);
     }
 
     public async Task<AuthResponse?> LoginAsync(string email, string password)
@@ -50,6 +55,9 @@ public class ApiClient
         var resp = await _identityApi.PostAsJsonAsync("api/sessions", new CreateSessionRequest(name, deadlineUtc));
         return resp.IsSuccessStatusCode ? await resp.Content.ReadFromJsonAsync<SessionWithTokenDto>() : null;
     }
+
+    public async Task<List<SessionSummaryDto>> GetMySessionsAsync() =>
+        await _identityApi.GetFromJsonAsync<List<SessionSummaryDto>>("api/sessions") ?? new();
 
     public async Task<SessionWithTokenDto?> JoinSessionByCodeAsync(string joinCode)
     {
