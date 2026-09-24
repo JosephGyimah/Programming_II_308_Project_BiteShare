@@ -1,0 +1,113 @@
+@page "/my-sessions"
+@inject ApiClient Api
+@inject AuthTokenStore Tokens
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>My Sessions - BiteShare</PageTitle>
+
+<div class="bite-container">
+    <div class="bite-hero" style="padding:1.25rem 1.25rem 1.5rem;">
+        <div class="bite-brand" style="font-size:1.15rem;">🍱 BiteShare</div>
+        <p style="margin-top:.35rem;">My Sessions</p>
+    </div>
+
+    <div class="bite-body">
+        <div class="bite-tabs">
+            <button @onclick='() => Nav.NavigateTo("/")'>Host new</button>
+            <button @onclick='() => Nav.NavigateTo("/join")'>Join as guest</button>
+        </div>
+
+        @if (_loading)
+        {
+            <p class="bite-empty">Loading...</p>
+        }
+        else if (!_sessions.Any())
+        {
+            <div class="bite-card">
+                <p class="bite-empty">No sessions yet. Host one from the home page.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var s in _sessions)
+            {
+                <div class="bite-card">
+                    <h3>
+                        @s.Name
+                        <span class="bite-badge status-@s.Status.ToLowerInvariant()">@s.Status</span>
+                    </h3>
+                    <div class="bite-row">
+                        <span class="bite-code-pill">@s.JoinCode</span>
+                        <button class="secondary" @onclick="() => CopyCode(s.JoinCode)">@(_copied == s.JoinCode ? "Copied!" : "Copy")</button>
+                    </div>
+                    <div class="bite-row">
+                        <span class="bite-row-sub">@s.ParticipantCount @(s.ParticipantCount == 1 ? "participant" : "participants")</span>
+                        <button class="secondary" @onclick="() => Open(s)">Open</button>
+                    </div>
+                </div>
+            }
+        }
+
+        @if (_error is not null)
+        {
+            <p class="bite-error">@_error</p>
+        }
+    </div>
+</div>
+
+@code {
+    private List<SessionSummaryDto> _sessions = new();
+    private bool _loading = true;
+    private string? _error;
+    private string? _copied;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tokens.LoadFromStorageAsync();
+        if (!Tokens.IsLoggedIn)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        try { _sessions = await Api.GetMySessionsAsync(); }
+        catch (HttpRequestException) { _error = "Couldn't load your sessions. Try signing in again."; }
+        _loading = false;
+    }
+
+    private async Task CopyCode(string code)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", code);
+        _copied = code;
+        StateHasChanged();
+        await Task.Delay(1500);
+        if (_copied == code) _copied = null;
+    }
+
+    // Login only yields an identity token; the session page needs a
+    // participant token, which join-by-code returns (idempotent for members).
+    private async Task Open(SessionSummaryDto s)
+    {
+        _error = null;
+        var result = await Api.JoinSessionByCodeAsync(s.JoinCode);
+        if (result is null)
+        {
+            _error = "Couldn't open that session.";
+            return;
+        }
+
+        var isHost = await IsHostAsync(result);
+        await Tokens.SetParticipantAsync(result.ParticipantToken, result.Session.Id, result.ParticipantId, isHost);
+        Nav.NavigateTo($"/session/{result.Session.Id}");
+    }
+
+    // SessionWithTokenDto doesn't say whether the caller is the host, but the
+    // participant list does.
+    private async Task<bool> IsHostAsync(SessionWithTokenDto result)
+    {
+        await Tokens.SetParticipantAsync(result.ParticipantToken, result.Session.Id, result.ParticipantId, false);
+        var participants = await Api.GetParticipantsAsync(result.Session.Id);
+        return participants.Any(p => p.Id == result.ParticipantId && p.IsHost);
+    }
+}

@@ -1,8 +1,26 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject AuthTokenStore Tokens
+@inject NavigationManager Nav
 
 <div class="page">
     <main>
+        @if (!IsSessionPage)
+        {
+            <nav class="bite-nav">
+                <a href="/">Home</a>
+                <a href="/join">Join</a>
+                @if (!Tokens.IsLoggedIn)
+                {
+                    <a href="/signup">Sign up</a>
+                }
+                else
+                {
+                    <a href="/my-sessions">My Sessions</a>
+                    <button class="bite-link-btn" @onclick="LogOut">Log out</button>
+                }
+            </nav>
+        }
         <article class="content">
             @Body
         </article>
@@ -10,8 +28,28 @@
 </div>
 
 @code {
+    private bool IsSessionPage => Nav.ToBaseRelativePath(Nav.Uri).StartsWith("session/", StringComparison.OrdinalIgnoreCase);
+
     protected override async Task OnInitializedAsync()
     {
+        Tokens.OnChange += Refresh;
+        Nav.LocationChanged += OnLocationChanged;
         await Tokens.LoadFromStorageAsync();
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => Refresh();
+
+    private async Task LogOut()
+    {
+        await Tokens.LogoutAsync();
+        Nav.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        Tokens.OnChange -= Refresh;
+        Nav.LocationChanged -= OnLocationChanged;
     }
 }

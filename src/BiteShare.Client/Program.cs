@@ -6,20 +6,24 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.RootComponents.Add<App>("#app");
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
-                 ?? "https://localhost:5001";
+// Blank ApiBaseUrl (production) = same origin: the API serves this client, so use the page's own address.
+var configuredBaseUrl = builder.Configuration["ApiBaseUrl"];
+var apiBaseUrl = (string.IsNullOrWhiteSpace(configuredBaseUrl) ? builder.HostEnvironment.BaseAddress : configuredBaseUrl).TrimEnd('/');
+builder.Configuration["ApiBaseUrl"] = apiBaseUrl; // OrderHubService reads the same key
+
+builder.Services.AddSingleton<AuthTokenStore>();
+builder.Services.AddTransient<IdentityAuthHandler>();
+builder.Services.AddTransient<ParticipantAuthHandler>();
 
 builder.Services.AddHttpClient("IdentityApi", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
-});
+}).AddHttpMessageHandler<IdentityAuthHandler>();
 
 builder.Services.AddHttpClient("SessionApi", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
-});
-
-builder.Services.AddScoped<AuthTokenStore>();
+}).AddHttpMessageHandler<ParticipantAuthHandler>();
 builder.Services.AddScoped<ApiClient>();
 builder.Services.AddScoped<OrderHubService>();
 

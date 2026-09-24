@@ -85,9 +85,12 @@ public class SessionsController : ControllerBase
             .Include(s => s.Participants)
             .FirstOrDefaultAsync(s => s.JoinCode == request.JoinCode.ToUpperInvariant());
         if (session is null) return NotFound("No session found for that join code.");
-        if (session.Status != SessionStatus.Open) return BadRequest("This session is no longer accepting participants.");
 
         var existing = session.Participants.FirstOrDefault(p => p.UserId == userId);
+        // Existing members can always re-enter (e.g. to see the receipt); only new joiners are blocked.
+        if (existing is null && session.Status != SessionStatus.Open)
+            return BadRequest("This session is no longer accepting participants.");
+
         Participant participant;
         if (existing is not null)
         {

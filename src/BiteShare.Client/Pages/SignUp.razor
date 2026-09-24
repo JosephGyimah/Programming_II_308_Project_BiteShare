@@ -1,0 +1,70 @@
+@page "/signup"
+@inject ApiClient Api
+@inject AuthTokenStore Tokens
+@inject NavigationManager Nav
+
+<PageTitle>Sign up - BiteShare</PageTitle>
+
+<div class="bite-container">
+    <div class="bite-hero">
+        <div class="bite-brand">🍱 BiteShare</div>
+        <h1>Create your account</h1>
+        <p>Takes a few seconds. You'll be signed in straight away.</p>
+    </div>
+
+    <div class="bite-body">
+        <div class="bite-card">
+            <label class="bite-label">Your name</label>
+            <input placeholder="e.g. Ama" @bind="_displayName" />
+            <label class="bite-label">Email</label>
+            <input type="email" placeholder="you@example.com" @bind="_email" />
+            <label class="bite-label">Password (8+ characters)</label>
+            <input type="password" placeholder="Password" @bind="_password" />
+            <button class="primary" @onclick="Register" disabled="@_busy">Sign up</button>
+        </div>
+
+        @if (_error is not null)
+        {
+            <p class="bite-error">@_error</p>
+        }
+
+        <button class="bite-link-btn" @onclick='() => Nav.NavigateTo("/")'>Already have an account? Sign in</button>
+    </div>
+</div>
+
+@code {
+    private string _displayName = "";
+    private string _email = "";
+    private string _password = "";
+    private string? _error;
+    private bool _busy;
+
+    private async Task Register()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_displayName) || string.IsNullOrWhiteSpace(_email) || string.IsNullOrEmpty(_password))
+        {
+            _error = "Fill in your name, email and password.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var (auth, error) = await Api.RegisterAsync(_email.Trim(), _password, _displayName.Trim());
+            if (auth is null)
+            {
+                _error = error;
+                return;
+            }
+
+            await Tokens.SetIdentityAsync(auth.Token, auth.DisplayName);
+            Nav.NavigateTo("/my-sessions");
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Couldn't reach the server.";
+        }
+        finally { _busy = false; }
+    }
+}

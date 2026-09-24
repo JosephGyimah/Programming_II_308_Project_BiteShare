@@ -41,8 +41,12 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddSignalR();
 
+// Hosts like Render provide DATABASE_URL (postgres://user:pass@host:port/db); locally use ConnectionStrings:Default.
+var connectionString = ToNpgsqlConnectionString(Environment.GetEnvironmentVariable("DATABASE_URL"))
+                       ?? builder.Configuration.GetConnectionString("Default");
+
 builder.Services.AddDbContext<BiteShareDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+    options.UseNpgsql(connectionString));
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
@@ -118,6 +122,15 @@ StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
 var app = builder.Build();
 
+// Create/upgrade the schema on startup so a fresh deploy needs no manual `dotnet ef` step.
+// (Skipped for non-relational providers, e.g. the in-memory DB used by tests.)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<BiteShareDbContext>();
+    if (db.Database.IsRelational())
+        db.Database.Migrate();
+}
+
 // --- Pipeline -----------------------------------------------------------
 
 if (app.Environment.IsDevelopment())
@@ -150,3 +163,19 @@ app.MapFallbackToFile("index.html");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.Run();
+
+static string? ToNpgsqlConnectionString(string? url)
+{
+    if (string.IsNullOrWhiteSpace(url)) return null;
+    if (!url.StartsWith("postgres://") && !url.StartsWith("postgresql://")) return url; // already key=value form
+
+    var uri = new Uri(url);
+    var userInfo = uri.UserInfo.Split(':', 2);
+    var port = uri.Port > 0 ? uri.Port : 5432;
+    return $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.TrimStart('/')};" +
+           $"Username={Uri.UnescapeDataString(userInfo[0])};Password={Uri.UnescapeDataString(userInfo.ElementAtOrDefault(1) ?? "")};" +
+           "SSL Mode=Prefer;Trust Server Certificate=true";
+}
+
+// Exposed so integration tests can host the API with WebApplicationFactory.
+public partial class Program { }
