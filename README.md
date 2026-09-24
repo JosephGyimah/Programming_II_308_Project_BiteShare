@@ -133,7 +133,3 @@ sessions and orders are wiped — the app is a demo, so that's fine):
 3. If the site doesn't recover on its own, open the `biteshare` web service → **Manual Deploy →
    Deploy latest commit**. On start the API recreates the tables.
 4. Sign up again — old accounts are gone.
-
-Set a calendar reminder for ~25 days after each (re)creation, and do it a day or two before any
-demo or grading date rather than the morning of. Free-tier notes: the web service sleeps when idle
-(the first request takes ~30–60 s) and Render's free Postgres expires after ~30 days.
