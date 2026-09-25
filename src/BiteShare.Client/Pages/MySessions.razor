@@ -7,9 +7,9 @@
 <PageTitle>My Sessions - BiteShare</PageTitle>
 
 <div class="bite-container">
-    <div class="bite-hero" style="padding:1.25rem 1.25rem 1.5rem;">
-        <div class="bite-brand" style="font-size:1.15rem;">🍱 BiteShare</div>
-        <p style="margin-top:.35rem;">My Sessions</p>
+    <div class="bite-hero bite-hero-compact">
+        <div class="bite-brand bite-brand-sm">🍱 BiteShare</div>
+        <p>My Sessions</p>
     </div>
 
     <div class="bite-body">
@@ -30,6 +30,7 @@
         }
         else
         {
+            <div class="bite-card-grid">
             @foreach (var s in _sessions)
             {
                 <div class="bite-card">
@@ -47,6 +48,7 @@
                     </div>
                 </div>
             }
+            </div>
         }
 
         @if (_error is not null)

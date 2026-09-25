@@ -11,18 +11,18 @@
 <div class="bite-container">
     @if (Tokens.ParticipantToken is null || Tokens.SessionId != SessionId)
     {
-        <div class="bite-body" style="padding-top:1.5rem;">
+        <div class="bite-body">
             <p class="bite-empty">You're not in this session yet. <a href="/">Go join or host one</a>.</p>
         </div>
     }
     else
     {
-        <div class="bite-hero" style="padding:1.25rem 1.25rem 1.5rem;">
-            <button class="bite-back-btn" @onclick='() => Nav.NavigateTo("/")'>←</button>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div class="bite-hero bite-hero-compact">
+            <button class="bite-back-btn" aria-label="Back to home" @onclick='() => Nav.NavigateTo("/")'>←</button>
+            <div class="bite-hero-top">
                 <div>
-                    <div class="bite-brand" style="font-size:1.15rem;">🍱 BiteShare</div>
-                    <p style="margin-top:.35rem;">@(Tokens.IsHost ? "You're hosting this table" : "You've joined this table")</p>
+                    <div class="bite-brand bite-brand-sm">🍱 BiteShare</div>
+                    <p>@(Tokens.IsHost ? "You're hosting this table" : "You've joined this table")</p>
                 </div>
                 <span class="bite-badge status-@(_orderStatus?.ToLowerInvariant() ?? "open")">@(_orderStatus ?? "Open")</span>
             </div>
@@ -48,6 +48,9 @@
                     }
                 </div>
             }
+
+            <div class="bite-split">
+            <div class="bite-split-main">
 
             <div class="bite-section-title">
                 Participants
@@ -100,6 +103,10 @@
                 </div>
             }
 
+            </div><!-- /.bite-split-main -->
+
+            <div class="bite-split-aside">
+
             <div class="bite-section-title">Shared cart</div>
             <div class="bite-card">
                 @foreach (var item in _cart)
@@ -109,7 +116,7 @@
                             <span class="bite-row-title">@item.MenuItemName</span>
                             <span class="bite-row-sub">@item.ParticipantName · x@item.Quantity</span>
                         </div>
-                        <div style="display:flex; align-items:center; gap:.6rem;">
+                        <div class="bite-row-actions">
                             <span class="bite-row-price">$@((item.UnitPrice * item.Quantity).ToString("0.00"))</span>
                             @if (item.ParticipantId == _myParticipantId && _orderStatus is null)
                             {
@@ -136,7 +143,7 @@
                 <div class="bite-section-title">Checkout</div>
                 <div class="bite-card">
                     <label class="bite-label">Split mode</label>
-                    <div class="bite-tabs" style="margin-bottom:.9rem;">
+                    <div class="bite-tabs">
                         <button class="@(_splitMode == "Equal" ? "active" : "")" @onclick='() => _splitMode = "Equal"'>Split equally</button>
                         <button class="@(_splitMode == "PerItem" ? "active" : "")" @onclick='() => _splitMode = "PerItem"'>Split per item</button>
                     </div>
@@ -148,7 +155,7 @@
                     <label class="bite-label">Delivery fee</label>
                     <input placeholder="0.00" @bind="_deliveryFee" />
 
-                    <p class="bite-row-sub" style="margin:.25rem 0 .9rem;"><em>Payment collection (Stripe) happens per participant client-side before this step in the full build — this MVP submits without capturing payment methods yet.</em></p>
+                    <p class="bite-note"><em>Payment collection (Stripe) happens per participant client-side before this step in the full build — this MVP submits without capturing payment methods yet.</em></p>
                     <button class="primary" @onclick="SubmitOrder">Place order</button>
                 </div>
             }
@@ -167,9 +174,7 @@
                             <span class="bite-row-price">$@r.AmountOwed.ToString("0.00")</span>
                         </div>
                     }
-                    <div style="margin-top:.9rem;">
-                        <button class="secondary" style="width:100%;" @onclick="DownloadReceiptPdf">⬇ Download PDF receipt</button>
-                    </div>
+                    <button class="secondary block" @onclick="DownloadReceiptPdf">⬇ Download PDF receipt</button>
                 </div>
             }
 
@@ -180,6 +185,9 @@
                     <button class="primary" @onclick="AdvanceStatus">Mark next stage →</button>
                 </div>
             }
+
+            </div><!-- /.bite-split-aside -->
+            </div><!-- /.bite-split -->
 
             @if (_error is not null)
             {

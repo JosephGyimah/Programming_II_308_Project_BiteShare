@@ -3,22 +3,24 @@
 @inject AuthTokenStore Tokens
 @inject NavigationManager Nav
 
-<div class="page">
+<div class="page @PageWidthClass">
     <main>
         @if (!IsSessionPage)
         {
             <nav class="bite-nav">
-                <a href="/">Home</a>
-                <a href="/join">Join</a>
-                @if (!Tokens.IsLoggedIn)
-                {
-                    <a href="/signup">Sign up</a>
-                }
-                else
-                {
-                    <a href="/my-sessions">My Sessions</a>
-                    <button class="bite-link-btn" @onclick="LogOut">Log out</button>
-                }
+                <div class="bite-nav-inner">
+                    <NavLink href="" Match="NavLinkMatch.All">Home</NavLink>
+                    <NavLink href="join">Join</NavLink>
+                    @if (!Tokens.IsLoggedIn)
+                    {
+                        <NavLink href="signup">Sign up</NavLink>
+                    }
+                    else
+                    {
+                        <NavLink href="my-sessions">My Sessions</NavLink>
+                        <button class="bite-link-btn bite-nav-spacer" @onclick="LogOut">Log out</button>
+                    }
+                </div>
             </nav>
         }
         <article class="content">
@@ -28,7 +30,16 @@
 </div>
 
 @code {
-    private bool IsSessionPage => Nav.ToBaseRelativePath(Nav.Uri).StartsWith("session/", StringComparison.OrdinalIgnoreCase);
+    private string CurrentPath => Nav.ToBaseRelativePath(Nav.Uri);
+
+    private bool IsSessionPage => CurrentPath.StartsWith("session/", StringComparison.OrdinalIgnoreCase);
+
+    // Routes that show lists or a side-by-side layout get the roomier desktop
+    // column; the auth/short-form pages stay a narrow, readable single column.
+    private string PageWidthClass =>
+        IsSessionPage || CurrentPath.StartsWith("my-sessions", StringComparison.OrdinalIgnoreCase)
+            ? "page-wide"
+            : "";
 
     protected override async Task OnInitializedAsync()
     {
